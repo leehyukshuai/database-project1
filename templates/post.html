@@ -1,0 +1,120 @@
+<!-- templates/post.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ post.title }}</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --background-color: #f8f9fa;
+        }
+        body {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--background-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .post-header {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .likers {
+            color: #666;
+            font-size: 0.9em;
+            margin: 10px 0;
+        }
+        .comments-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .comment {
+            margin: 1rem 0;
+            padding: 1rem;
+            border-left: 3px solid var(--secondary-color);
+            background-color: #f8f9fa;
+        }
+        .reply-to {
+            font-size: 0.9em;
+            color: #666;
+            padding: 5px;
+            background: #e9ecef;
+            border-radius: 3px;
+            margin-bottom: 5px;
+        }
+        .comment-username {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        .comment-likers {
+            margin-top: 5px;
+            font-size: 0.8em;
+            color: #6c757d;
+        }
+        .comment-likers span {
+            margin-right: 5px;
+        }
+        .comment-content {
+            margin: 5px 0;
+            line-height: 1.5;
+        }
+        .replies {
+            margin-left: 2rem;
+            border-left: 2px solid #ddd;
+            padding-left: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="post-header">
+        <h1>{{ post.title }}</h1>
+        <p class="meta">
+            来自公众号：<strong>{{ post.channel_name }}</strong> | 
+            发布日期：{{ post.created_at.strftime('%Y-%m-%d %H:%M') }} | 
+            评论数：{{ post.comment_count }}
+        </p>
+        <div class="likers">
+            点赞用户：{% if likers %}{{ likers|join(', ') }}{% else %}暂无点赞{% endif %}
+        </div>
+        <article>{{ post.content }}</article>
+    </div>
+
+    <div class="comments-section">
+        <h3>评论列表</h3>
+        {% macro render_comments(comments) %}
+            <div class="comments">
+            {% for comment in comments %}
+                <div class="comment">
+                    {% if comment.reply_to %}
+                    <div class="reply-to">
+                        回复 @{{ comment.reply_to.user }}: {{ comment.reply_to.content|truncate(30) }}
+                    </div>
+                    {% endif %}
+                    <div class="comment-header">
+                        <span class="comment-username">{{ comment.username }}</span>
+                    </div>
+                    <div class="comment-content">{{ comment.content }}</div>
+                    {% if comment.likers %}
+                    <div class="comment-likers">
+                        ♥ 点赞用户：{% for liker in comment.likers %}<span>{{ liker }}</span>{% endfor %}
+                    </div>
+                    {% endif %}
+                    {% if comment.replies %}
+                    <div class="replies">
+                        {{ render_comments(comment.replies) }}
+                    </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            </div>
+        {% endmacro %}
+        {{ render_comments(comments) }}
+    </div>
+</body>
+</html>

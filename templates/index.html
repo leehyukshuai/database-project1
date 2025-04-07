@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>首页 - 最新推文</title>
+    <style>
+        .post-list { margin: 20px; max-width: 800px; }
+        .post-item { 
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+        .post-title { 
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        .meta-info {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        .content-preview {
+            color: #444;
+            line-height: 1.6;
+        }
+        a { 
+            color: #0366d6;
+            text-decoration: none;
+        }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="post-list">
+        <h1>最新推文</h1>
+        
+        {% if posts %}
+            <ul>
+            {% for post in posts %}
+                <li class="post-item">
+                    <h2 class="post-title">
+                        <a href="/post/{{ post.pid }}">{{ post.title }}</a>
+                    </h2>
+                    
+                    <div class="meta-info">
+                        <span>来自：{{ post.channel_name }}</span>
+                        <span style="margin: 0 10px">|</span>
+                        <span>{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                    
+                    <div class="content-preview">
+                        {{ post.content[:100] }}{% if post.content|length > 100 %}...{% endif %}
+                    </div>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>暂无推文</p>
+        {% endif %}
+    </div>
+</body>
+</html>
