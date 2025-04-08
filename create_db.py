@@ -1,16 +1,16 @@
 # create_db.py
 import pymysql
 
+db_config = {
+    "host": "10.129.195.217",
+    "user": "hs",
+    "password": "",
+    "database": "db_hs",
+    "charset": "utf8mb4",
+}
 
 def create_db():
     # 创建数据库连接
-    db_config = {
-        "host": "10.129.195.217",
-        "user": "hs",
-        "password": "",
-        "database": "db_hs",
-        "charset": "utf8mb4",
-    }
     connection = pymysql.connect(**db_config)
 
     try:

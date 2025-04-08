@@ -1,17 +1,9 @@
 from flask import Flask, render_template, request, redirect
 import pymysql
 
+from create_db import db_config
+
 app = Flask(__name__)
-
-# 数据库配置
-db_config = {
-    "host": "10.129.195.217",
-    "user": "hs",
-    "password": "",
-    "database": "db_hs",
-    "charset": "utf8mb4",
-}
-
 
 def get_db_connection():
     return pymysql.connect(**db_config)
