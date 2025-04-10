@@ -60,10 +60,10 @@
                     <td>{{ channel.follower_cnt }}</td>
                     <td class="actions">
                         {% if channel.followed == 1 %}
-                            <a href="{{ url_for('unfollow', channel_id=channel.nid, view=view_type, selected_channel=selected_channel.id) }}" 
+                            <a href="{{ url_for('unfollow', channel_id=channel.nid, channel_name=channel.name, view=view_type, selected_channel_name=selected_channel.name, selected_channel_id=selected_channel.id) }}" 
                                 class="btn btn-sm btn-danger">取消关注</a>
                         {% else %}
-                            <a href="{{ url_for('follow', channel_id=channel.nid, view=view_type, selected_channel=selected_channel.id) }}" 
+                            <a href="{{ url_for('follow', channel_id=channel.nid, channel_name=channel.name, view=view_type, selected_channel_name=selected_channel.name, selected_channel_id=selected_channel.id) }}" 
                                 class="btn btn-sm btn-primary">关注</a>
                         {% endif %}
                     </td>
@@ -110,7 +110,7 @@
                         <td>{{ post.like_cnt }}</td>
                         {% if view_type == 'managed' %}
                         <td class="actions">
-                            <a href="{{ url_for('delete_post', post_id=post.pid) }}" 
+                            <a href="{{ url_for('delete_post', post_id=post.pid, post_name=post.title, view=view_type, selected_channel_name=selected_channel.name, selected_channel_id=selected_channel.id) }}" 
                             class="btn btn-sm btn-danger" 
                             onclick="return confirm('确定要删除这篇推文吗？')">删除</a>
                         </td>

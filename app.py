@@ -10,15 +10,7 @@ app.secret_key = "my_secret_key"
 def get_db_connection():
     return pymysql.connect(**db_config)
 
-# 注册，*登录*，修改密码
-
-# （当前用户）列出全部公众号并进行管理（关注或者取消关注）
-
-# （当前用户）显示自己所关注的公众号的全部推文
-
-# （当前用户）评论某推文或者评论
-
-# （当前用户）点赞或者取消点赞某推文或者评论
+# TODO: 添加修改密码的逻辑
 
 @app.route("/")
 def index():
@@ -27,11 +19,7 @@ def index():
         # 获取用户主页内容，包括关注的公众号，最新推文等
         connection = get_db_connection()
         # 获取参数用于网页显示，默认显示关注的公众号
-        try:
-            view = request.args.get('view')
-        except:
-            view = 'followed'
-        
+        view = request.args.get('view', 'all')
         
         # 注：需要为每行查询结果添加一个 follower_cnt 字段，表示关注人数
         # 设置每一个channel的followed属性
@@ -174,7 +162,7 @@ def register():
         username = request.form["username"]
         password = request.form["password"]
 
-        # TODO: 注册新用户，是否需要检测注册是否成功？
+        # 注册新用户，是否需要检测注册是否成功？
         connection = get_db_connection()
         try:
             with connection.cursor() as cursor:
@@ -201,27 +189,102 @@ def logout():
     return redirect(url_for('index'))
 
 
-@app.route("/follow/<channel_id>")
-def follow(channel_id):
+@app.route("/follow")
+def follow():
     if 'userid' in session:
-        # TODO: 关注公众号
-        
-        flash("Followed channel {555}", 'info')
-        return redirect(url_for('index', view=request.args.get('view'), selected_channel=request.args.get('selected_channel')))
+        # 关注公众号
+        channel_id = request.args.get('channel_id')
+        channel_name = request.args.get('channel_name')
+        selected_channel_name = request.args.get('selected_channel_name')
+        selected_channel_id = request.args.get('selected_channel_id')
+        connection = get_db_connection()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO subscribe (uid, nid)
+                    VALUES(%s,%s)
+                """, (session['userid'], channel_id))
+            connection.commit()
+            # 如果关注成功，重定向到主页
+            flash(f"‘{session['username']}' followed channel {channel_name}", 'info')
+            return redirect(url_for('index', view=request.args.get('view'), selected_channel={'name':selected_channel_name, 'id':selected_channel_id}))
+        except Exception as e:
+            # 否则告知用户无法关注该公众号（已经关注）
+            flash(f"'{session['username']}' has already followed channel {channel_name}", "danger")
+            return redirect(url_for('index', view=request.args.get('view'), selected_channel={'name':selected_channel_name, 'id':selected_channel_id}))
+        finally:
+            connection.close()
     else:
         return redirect(url_for('login'))
-    
 
-@app.route("/unfollow/<channel_id>")
-def unfollow(channel_id):
+
+@app.route("/unfollow")
+def unfollow():
     if 'userid' in session:
-        # TODO: 取消关注公众号
-
-        flash("Unfollowed channel {555}", 'info')
-        return redirect(url_for('index', view=request.args.get('view'), selected_channel=request.args.get('selected_channel')))
+        # 取消关注公众号
+        channel_id = request.args.get('channel_id')
+        channel_name = request.args.get('channel_name')
+        selected_channel_name = request.args.get('selected_channel_name')
+        selected_channel_id = request.args.get('selected_channel_id')
+        connection = get_db_connection()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    DELETE FROM subscribe AS s
+                    WHERE s.uid = %s and s.nid = %s;
+                """, (session['userid'], channel_id))
+            connection.commit()
+            # 如果取消关注成功，重定向到主页
+            flash(f"‘{session['username']}' unfollowed channel {channel_name}", 'info')
+            return redirect(url_for('index', view=request.args.get('view'), selected_channel={'name':selected_channel_name, 'id':selected_channel_id}))
+        except Exception as e:
+            # 否则告知用户无法取消关注该公众号（尚未关注）
+            flash(f"'{session['username']}' hasn't followed channel {channel_name}", "danger")
+            return redirect(url_for('index', view=request.args.get('view'), selected_channel={'name':selected_channel_name, 'id':selected_channel_id}))
+        finally:
+            connection.close()
     else:
         return redirect(url_for('login'))
 
+# @app.route("/delete_post/<post_id>")
+# def delete_post(post_id):
+#     if 'userid' in session:
+#         # TODO: 删除推文，需要检测权限
+#         post_name = request.args.get('post_name')
+#         selected_channel_name = request.args.get('selected_channel_name')
+#         selected_channel_id = request.args.get('selected_channel_id')
+#         connection = get_db_connection()
+#         try:
+#             with connection.cursor() as cursor:
+#                 # 查找post_id所属于的channel
+#                 cursor.execute("""
+#                     SELECT p.from_channel FROM posts
+#                     WHERE p.pid = %s;
+#                 """, (post_id))
+#                 result = cursor.fetchone()
+#                 if result:
+#                     pass
+#                 else:
+#                     # 删除的pid不存在
+#                     flash(f"‘{session['username']}' deleted {post_name}", 'info')
+#                     return redirect(url_for('index', view=request.args.get('view'), selected_channel={'name':selected_channel_name, 'id':selected_channel_id}))
+#                 # 检查权限：在manage_channels中有uid=session['userid'],nid=被删除文章所在channel_id的条目
+#                 cursor.execute("""
+#                     DELETE FROM posts AS p
+#                     WHERE p.pid = %s;
+#                 """, (post_id))
+#             connection.commit()
+#             # 如果取消关注成功，重定向到主页
+#             flash(f"‘{session['username']}' deleted {post_name}", 'info')
+#             return redirect(url_for('index', view=request.args.get('view'), selected_channel={'name':selected_channel_name, 'id':selected_channel_id}))
+#         except Exception as e:
+#             # 否则告知用户无法取消关注该公众号（尚未关注）
+#             flash(f"'{session['username']}' hasn't followed channel {channel_name}", "danger")
+#             return redirect(url_for('index', view=request.args.get('view'), selected_channel={'name':selected_channel_name, 'id':selected_channel_id}))
+#         finally:
+#             connection.close()
+#     else:
+#         return redirect(url_for('login'))
 
 @app.route("/delete_post/<post_id>")
 def delete_post(post_id):
@@ -235,6 +298,7 @@ def delete_post(post_id):
 
 @app.route("/show_post/<post_id>")
 def show_post(post_id):
+    # TODO: 添加点赞和评论的交互
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
