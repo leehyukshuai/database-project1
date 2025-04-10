@@ -1,62 +1,126 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>首页 - 最新推文</title>
-    <style>
-        .post-list { margin: 20px; max-width: 800px; }
-        .post-item { 
-            margin-bottom: 30px;
-            padding: 15px;
-            border: 1px solid #eee;
-            border-radius: 5px;
-        }
-        .post-title { 
-            font-size: 1.5em;
-            margin-bottom: 5px;
-        }
-        .meta-info {
-            color: #666;
-            font-size: 0.9em;
-            margin-bottom: 10px;
-        }
-        .content-preview {
-            color: #444;
-            line-height: 1.6;
-        }
-        a { 
-            color: #0366d6;
-            text-decoration: none;
-        }
-        a:hover { text-decoration: underline; }
-    </style>
-</head>
-<body>
-    <div class="post-list">
-        <h1>最新推文</h1>
+{% extends "base.html" %}
+{% block title %}主页 - 我的网站{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- 左侧导航栏 -->
+    <div class="sidebar">
+        <div class="user-info">
+            <h3>{{ user.name }}</h3>
+            <p>欢迎回来！</p>
+        </div>
         
-        {% if posts %}
-            <ul>
-            {% for post in posts %}
-                <li class="post-item">
-                    <h2 class="post-title">
-                        <a href="/post/{{ post.pid }}">{{ post.title }}</a>
-                    </h2>
-                    
-                    <div class="meta-info">
-                        <span>来自：{{ post.channel_name }}</span>
-                        <span style="margin: 0 10px">|</span>
-                        <span>{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
-                    </div>
-                    
-                    <div class="content-preview">
-                        {{ post.content[:100] }}{% if post.content|length > 100 %}...{% endif %}
-                    </div>
-                </li>
-            {% endfor %}
-            </ul>
-        {% else %}
-            <p>暂无推文</p>
-        {% endif %}
+        <div class="nav-buttons">
+            <a href="{{ url_for('index', view='followed') }}" 
+               class="btn">
+               已关注的公众号
+            </a>
+            <a href="{{ url_for('index', view='all') }}" 
+               class="btn">
+               所有公众号
+            </a>
+            <a href="{{ url_for('index', view='managed') }}" 
+               class="btn">
+               管理的公众号
+            </a>
+            <a href="{{ url_for('logout') }}"
+               class="btn">
+               退出登录
+            </a>
+        </div>
     </div>
-</body>
-</html>
+    
+    <!-- 中间公众号列表 -->
+    <div class="main-content">
+        <h2>
+            {% if view_type == 'followed' %}已关注的公众号
+            {% elif view_type == 'all' %}所有公众号
+            {% elif view_type == 'managed' %}管理的公众号
+            {% endif %}
+        </h2>
+        
+        <table class="account-table">
+            <thead>
+                <tr>
+                    <th>公众号名称</th>
+                    <th>创建者</th>
+                    <th>关注者数</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for channel in channels %}
+                <tr class="{{ channel.name }}">
+                    <td>
+                        <a href="{{ url_for('/index', view=view_type, selected_channel=channel.nid) }}">
+                            {{ channel.name }}
+                        </a>
+                    </td>
+                    <td>{{ channel.created_by }}</td>
+                    <td>{{ channel.follower_cnt }}</td>
+                    <td class="actions">
+                        {% if channel.followed %}
+                            <a href="{{ url_for('/unfollow', channel_nid=channel.nid, view=view_type, selected_channel=selected_channel) }}" 
+                                class="btn btn-sm btn-danger">取消关注</a>
+                        {% else %}
+                            <a href="{{ url_for('/follow', channel_nid=channel.nid, view=view_type, selected_channel=selected_channel) }}" 
+                                class="btn btn-sm btn-primary">关注</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- 右侧推文列表 -->
+    <div class="article-preview">
+        <h2>
+            {% if selected_channel %}
+                {{ selected_channel.name }}的推文
+            {% else %}
+                关注的公众号的推文
+            {% endif %}
+        </h2>
+        
+        <table class="article-table">
+            <thead>
+                <tr>
+                    <th>标题</th>
+                    <th>发布时间</th>
+                    <th>点赞数</th>
+                    {% if view_type == 'managed' %}
+                    <th>操作</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% if posts %}
+                    {% for post in posts %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('/post', post_id=post.pid) }}">
+                                {{ post.title }}
+                            </a>
+                        </td>
+                        <td>{{ post.created_at }}</td>
+                        <td>{{ post.like_cnt }}</td>
+                        {% if view_type == 'managed' %}
+                        <td class="actions">
+                            <a href="{{ url_for('/delete_post', post_id=post.pid) }}" 
+                            class="btn btn-sm btn-danger" 
+                            onclick="return confirm('确定要删除这篇推文吗？')">删除</a>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="{% if view_type == 'managed' %}3{% else %}2{% endif %}">暂无推文</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

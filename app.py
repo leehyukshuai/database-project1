@@ -1,51 +1,161 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, session, flash, url_for
 import pymysql
 
 from create_db import db_config
 
 app = Flask(__name__)
+app.secret_key = "my_secret_key"
 
 def get_db_connection():
     return pymysql.connect(**db_config)
 
+# 注册，*登录*，修改密码
+
+# （当前用户）列出全部公众号并进行管理（关注或者取消关注）
+
+# （当前用户）显示自己所关注的公众号的全部推文
+
+# （当前用户）评论某推文或者评论
+
+# （当前用户）点赞或者取消点赞某推文或者评论
 
 @app.route("/")
 def index():
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            # 修改后的查询（添加JOIN获取频道名称）
-            cursor.execute(
-                """
-                SELECT p.*, c.name AS channel_name
-                FROM posts p
-                JOIN channels c ON p.from_channel = c.nid
-                ORDER BY created_at DESC
-                LIMIT 5
-            """
+    # 用户已登录，显示主页内容
+    if 'user' in session:
+        # TODO: 获取用户主页内容，包括关注的公众号，最新推文等
+        
+        # 获取参数用于网页显示，默认显示关注的公众号
+        try:
+            view = request.args.get('view')
+        except:
+            view = 'followed'
+        
+        
+        # 注：需要为每行查询结果添加一个 follower_cnt 字段，表示关注人数
+        channels = []
+        if view == 'followed':
+            # TODO: 将关注的公众号的数据存入 channels 中
+            channels = []
+        elif view == 'all':
+            # TODO: 将全部公众号的数据存入 channels 中
+            channels = []
+        elif view == 'managed':
+            # TODO: 将用户管理的公众号的数据存入 channels 中
+            channels = []
+
+
+        # 获取参数用于选择公众号
+        try:
+            selected_channel = request.args.get('selected_channel')
+        except:
+            selected_channel = None
+        
+        # 注：需要为每行查询结果添加一个 like_cnt 字段，表示点赞数量
+        posts = []
+        if selected_channel is not None:
+            # TODO: 将选择的公众号的最新推文存入 posts 中
+            posts = []
+        elif view == 'followed':
+            # TODO: 将关注的公众号的最新推文存入 posts 中
+            posts = []
+        elif view == 'all':
+            # TODO: 将全部公众号的最新推文存入 posts 中
+            posts = []
+        elif view == 'managed':
+            # TODO: 将用户管理的公众号的最新推文存入 posts 中
+            posts = []
+
+            
+        # TODO: index 渲染需要三个数据：用户信息，中侧栏所需公众号信息，右侧栏所需推文信息
+        return render_template("index.html", 
+            user={'name': 'test'},
+            channels=[],
+            posts=[],
+            view_type=view,
+            selected_channel=selected_channel
             )
-            posts = [
-                dict(
-                    zip(
-                        [
-                            "pid",
-                            "title",
-                            "from_channel",
-                            "content",
-                            "created_at",
-                            "channel_name",
-                        ],
-                        post,
-                    )
-                )
-                for post in cursor.fetchall()
-            ]
-        return render_template("index.html", posts=posts)
-    finally:
-        conn.close()
+    else:
+    # 用户未登录，重定向到登录页面
+        return redirect(url_for('login'))
 
 
-@app.route("/post/<int:pid>")
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        
+        # TODO: 验证用户名和密码
+        # 如果验证成功，将用户信息存储在session中
+        if True:
+            # TODO: username 应该替换成其他用户信息，比如用户ID
+            session['user'] = username
+            return redirect(url_for('index'))
+        else:
+            flash("Invalid username or password", "danger")
+    
+    return render_template("login.html")
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        # TODO: 注册新用户，是否需要检测注册是否成功？
+        # 如果注册成功，重定向到登录页面
+        if True:
+            # TODO: 在 session 中存储用户信息
+            # session['user'] = user
+            flash("Register success, please login", "success")
+            return redirect(url_for('login'))
+        else:
+            flash("Regiter failed", "danger")
+
+    return render_template("register.html")
+
+
+@app.route("/logout")
+def logout():
+    session.pop('user', None)
+    return redirect(url_for('index'))
+
+
+@app.route("/follow/<channel_id>")
+def follow(channel_id):
+    if 'user' in session:
+        # TODO: 关注公众号
+        
+        flash("Followed channel {555}", 'info')
+        return redirect(url_for('index', view=request.args.get('view'), selected_channel=request.args.get('selected_channel')))
+    else:
+        return redirect(url_for('login'))
+    
+
+@app.route("/unfollow/<channel_id>")
+def unfollow(channel_id):
+    if 'user' in session:
+        # TODO: 取消关注公众号
+
+        flash("Unfollowed channel {555}", 'info')
+        return redirect(url_for('index', view=request.args.get('view'), selected_channel=request.args.get('selected_channel')))
+    else:
+        return redirect(url_for('login'))
+
+
+@app.route("/delete_post/<post_id>")
+def delete_post(post_id):
+    if 'user' in session:
+        # TODO: 删除推文，可能需要检测权限
+        flash("Deleted post {555}", 'info')
+        return redirect(url_for('index', view=request.args.get('view'), selected_channel=request.args.get('selected_channel')))
+    else:
+        return redirect(url_for('login'))
+
+
+@app.route("/post/<post_id>")
 def show_post(pid):
     conn = get_db_connection()
     try:
