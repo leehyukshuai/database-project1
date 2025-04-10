@@ -24,7 +24,7 @@ def get_db_connection():
 def index():
     # 用户已登录，显示主页内容
     if 'userid' in session:
-        # TODO: 获取用户主页内容，包括关注的公众号，最新推文等
+        # 获取用户主页内容，包括关注的公众号，最新推文等
         connection = get_db_connection()
         # 获取参数用于网页显示，默认显示关注的公众号
         try:
@@ -34,7 +34,7 @@ def index():
         
         
         # 注：需要为每行查询结果添加一个 follower_cnt 字段，表示关注人数
-        # TODO: 设置每一个channel的followed属性
+        # 设置每一个channel的followed属性
         channels = []
         if view == 'followed':
             # 将关注的公众号的数据存入 channels 中
@@ -77,16 +77,23 @@ def index():
                 channels = cursor.fetchall()
 
         # 获取参数用于选择公众号
-        try:
-            selected_channel = request.args.get('selected_channel')
-        except:
-            selected_channel = None
+        selected_channel_name = request.args.get('selected_channel_name')
+        selected_channel_id = request.args.get('selected_channel_id')
         
         # 注：需要为每行查询结果添加一个 like_cnt 字段，表示点赞数量
         posts = []
-        if selected_channel is not None:
+        if selected_channel_name is not None:
             # TODO: 将选择的公众号的最新推文存入 posts 中
-            posts = []
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+                cursor.execute("""
+                    WITH 
+                    SELECT p.title, p.created_at,  AS like_cnt
+                    FROM managed_channels AS mc
+                    JOIN channels AS c ON mc.nid = c.nid
+                    JOIN users AS u ON u.uid = c.created_by
+                    JOIN channel_follower_cnt AS cn ON cn.nid = c.nid;
+                """, ())
+                posts = cursor.fetchall()
         elif view == 'followed':
             # TODO: 将关注的公众号的最新推文存入 posts 中
             posts = []
@@ -105,7 +112,7 @@ def index():
             channels=channels,
             posts=[],
             view_type=view,
-            selected_channel=selected_channel
+            selected_channel_name=selected_channel_name
             )
     else:
     # 用户未登录，重定向到登录页面
