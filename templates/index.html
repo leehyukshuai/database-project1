@@ -52,7 +52,7 @@
                 {% for channel in channels %}
                 <tr class="{{ channel.name }}">
                     <td>
-                        <a href="{{ url_for('index', view=view_type, selected_channel_name=channel.name, selected_channel_id=channel.nid) }}">
+                        <a href="{{ url_for('index', view=view_type, selected_channel_id=channel.nid, selected_channel_name=channel.name) }}">
                             {{ channel.name }}
                         </a>
                     </td>
@@ -60,10 +60,10 @@
                     <td>{{ channel.follower_cnt }}</td>
                     <td class="actions">
                         {% if channel.followed == 1 %}
-                            <a href="{{ url_for('unfollow', channel_id=channel.nid, view=view_type, selected_channel=selected_channel) }}" 
+                            <a href="{{ url_for('unfollow', channel_id=channel.nid, view=view_type, selected_channel=selected_channel.id) }}" 
                                 class="btn btn-sm btn-danger">取消关注</a>
                         {% else %}
-                            <a href="{{ url_for('follow', channel_id=channel.nid, view=view_type, selected_channel=selected_channel) }}" 
+                            <a href="{{ url_for('follow', channel_id=channel.nid, view=view_type, selected_channel=selected_channel.id) }}" 
                                 class="btn btn-sm btn-primary">关注</a>
                         {% endif %}
                     </td>
@@ -76,8 +76,8 @@
     <!-- 右侧推文列表 -->
     <div class="article-preview">
         <h2>
-            {% if selected_channel_name %}
-                {{ selected_channel_name }}的推文
+            {% if selected_channel.name %}
+                {{ selected_channel.name }}的推文
             {% else %}
                 {% if view_type == 'followed' %}已关注的公众号的推文
                 {% elif view_type == 'all' %}所有公众号的推文
@@ -102,7 +102,7 @@
                     {% for post in posts %}
                     <tr>
                         <td>
-                            <a href="{{ url_for('post', post_id=post.pid) }}">
+                            <a href="{{ url_for('show_post', post_id=post.pid) }}">
                                 {{ post.title }}
                             </a>
                         </td>

@@ -83,36 +83,59 @@ def index():
         # 注：需要为每行查询结果添加一个 like_cnt 字段，表示点赞数量
         posts = []
         if selected_channel_name is not None:
-            # TODO: 将选择的公众号的最新推文存入 posts 中
+            # 将选择的公众号的最新推文存入 posts 中
             with connection.cursor(pymysql.cursors.DictCursor) as cursor:
                 cursor.execute("""
-                    WITH 
-                    SELECT p.title, p.created_at,  AS like_cnt
-                    FROM managed_channels AS mc
-                    JOIN channels AS c ON mc.nid = c.nid
-                    JOIN users AS u ON u.uid = c.created_by
-                    JOIN channel_follower_cnt AS cn ON cn.nid = c.nid;
-                """, ())
+                    WITH post_liker_cnt AS (SELECT lp.pid, COUNT(lp.uid) AS count FROM like_post AS lp GROUP BY lp.pid)
+                    SELECT p.pid, p.title, p.created_at, lc.count AS like_cnt
+                    FROM posts AS p
+                    JOIN post_liker_cnt AS lc ON p.pid = lc.pid
+                    WHERE p.from_channel = %s;
+                """, (selected_channel_id))
                 posts = cursor.fetchall()
         elif view == 'followed':
-            # TODO: 将关注的公众号的最新推文存入 posts 中
-            posts = []
+            # 将关注的公众号的最新推文存入 posts 中
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+                cursor.execute("""
+                    WITH post_liker_cnt AS (SELECT lp.pid, COUNT(lp.uid) AS count FROM like_post AS lp GROUP BY lp.pid),
+                    followed_channels AS (SELECT s.nid FROM subscribe AS s WHERE s.uid = %s)
+                    SELECT p.pid, p.title, p.created_at, lc.count AS like_cnt
+                    FROM posts AS p
+                    JOIN post_liker_cnt AS lc ON p.pid = lc.pid
+                    WHERE p.from_channel IN (SELECT * FROM followed_channels);
+                """, (session['userid']))
+                posts = cursor.fetchall()
         elif view == 'all':
-            # TODO: 将全部公众号的最新推文存入 posts 中
-            posts = []
+            # 将全部公众号的最新推文存入 posts 中
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+                cursor.execute("""
+                    WITH post_liker_cnt AS (SELECT lp.pid, COUNT(lp.uid) AS count FROM like_post AS lp GROUP BY lp.pid)
+                    SELECT p.pid, p.title, p.created_at, lc.count AS like_cnt
+                    FROM posts AS p
+                    JOIN post_liker_cnt AS lc ON p.pid = lc.pid;
+                """)
+                posts = cursor.fetchall()
         elif view == 'managed':
-            # TODO: 将用户管理的公众号的最新推文存入 posts 中
-            posts = []
-
+            # 将用户管理的公众号的最新推文存入 posts 中
+            with connection.cursor(pymysql.cursors.DictCursor) as cursor:
+                cursor.execute("""
+                    WITH post_liker_cnt AS (SELECT lp.pid, COUNT(lp.uid) AS count FROM like_post AS lp GROUP BY lp.pid),
+                    managed_channels AS (SELECT s.nid FROM manage_channel AS s WHERE s.uid = %s)
+                    SELECT p.pid, p.title, p.created_at, lc.count AS like_cnt
+                    FROM posts AS p
+                    JOIN post_liker_cnt AS lc ON p.pid = lc.pid
+                    WHERE p.from_channel IN (SELECT * FROM managed_channels);
+                """, (session['userid']))
+                posts = cursor.fetchall()
             
         connection.close()
-        # TODO: index 渲染需要三个数据：用户信息，中侧栏所需公众号信息，右侧栏所需推文信息
+        # index 渲染需要三个数据：用户信息，中侧栏所需公众号信息，右侧栏所需推文信息
         return render_template("index.html", 
             user={'name': session['username']},
             channels=channels,
-            posts=[],
+            posts=posts,
             view_type=view,
-            selected_channel_name=selected_channel_name
+            selected_channel={'name': selected_channel_name, 'id': selected_channel_id}
             )
     else:
     # 用户未登录，重定向到登录页面
@@ -125,7 +148,7 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
         
-        # TODO: 验证用户名和密码
+        # 验证用户名和密码
         connection = get_db_connection()
         with connection.cursor() as cursor:
             cursor.execute("""
@@ -210,8 +233,8 @@ def delete_post(post_id):
         return redirect(url_for('login'))
 
 
-@app.route("/post/<pid>")
-def show_post(pid):
+@app.route("/show_post/<post_id>")
+def show_post(post_id):
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
@@ -224,7 +247,7 @@ def show_post(pid):
                 JOIN channels c ON p.from_channel = c.nid 
                 WHERE p.pid = %s
             """,
-                (pid,),
+                (post_id,),
             )
             post = cursor.fetchone()
 
@@ -236,7 +259,7 @@ def show_post(pid):
                 JOIN users u ON lp.uid = u.uid
                 WHERE lp.pid = %s
             """,
-                (pid,),
+                (post_id,),
             )
             likers = [row[0] for row in cursor.fetchall()]
 
@@ -251,7 +274,7 @@ def show_post(pid):
                     LEFT JOIN users ru ON rc.from_user = ru.uid
                     WHERE c.pid = %s
                 """
-                params = [pid]
+                params = [post_id]
 
                 if parent_id is None:
                     base_query += " AND c.master_comment IS NULL"
@@ -287,7 +310,7 @@ def show_post(pid):
                     JOIN users u ON lc.uid = u.uid
                     WHERE lc.cid = %s AND lc.pid = %s
                 """,
-                    (cid, pid),
+                    (cid, post_id),
                 )
                 return [row[0] for row in cursor.fetchall()]
 
