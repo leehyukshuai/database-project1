@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, session, flash, url_for
 import pymysql
+import pymysql.cursors
 
 from create_db import db_config
 
@@ -87,13 +88,20 @@ def login():
         password = request.form["password"]
         
         # TODO: 验证用户名和密码
-        # 如果验证成功，将用户信息存储在session中
-        if True:
-            # TODO: username 应该替换成其他用户信息，比如用户ID
-            session['user'] = username
-            return redirect(url_for('index'))
-        else:
-            flash("Invalid username or password", "danger")
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT u.password
+                FROM users AS u
+                WHERE u.username = %s
+            """, (username))
+            result = cursor.fetchone()
+            if result and result[0] == password:
+                # 如果验证成功，将用户信息存储在session中
+                session['user'] = username
+                return redirect(url_for('index'))
+        connection.close()
+        flash("Invalid username or password", "danger")
     
     return render_template("login.html")
 
@@ -105,15 +113,22 @@ def register():
         password = request.form["password"]
 
         # TODO: 注册新用户，是否需要检测注册是否成功？
-        # 如果注册成功，重定向到登录页面
-        if True:
-            # TODO: 在 session 中存储用户信息
-            # session['user'] = user
+        connection = get_db_connection()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO users (username, password)
+                    VALUES (%s, %s);
+                """, (username, password))
+            connection.commit()
+            # 如果注册成功，重定向到登录页面
             flash("Register success, please login", "success")
             return redirect(url_for('login'))
-        else:
-            flash("Regiter failed", "danger")
-
+        except Exception as e:
+            flash(f"username '{username}' is occupied, please use another username", "danger")
+            return render_template("register.html")
+        finally:
+            connection.close()
     return render_template("register.html")
 
 
@@ -155,7 +170,7 @@ def delete_post(post_id):
         return redirect(url_for('login'))
 
 
-@app.route("/post/<post_id>")
+@app.route("/post/<pid>")
 def show_post(pid):
     conn = get_db_connection()
     try:
