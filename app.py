@@ -42,7 +42,7 @@ def index():
                 cursor.execute("""
                     WITH followed_channels AS (SELECT s.nid FROM subscribe AS s WHERE s.uid = %s),
                     channel_follower_cnt AS (SELECT s.nid, COUNT(s.uid) AS count FROM subscribe AS s GROUP BY s.nid)
-                    SELECT c.name, u.username AS created_by, cn.count AS follower_cnt, 1 AS followed
+                    SELECT c.nid, c.name, u.username AS created_by, cn.count AS follower_cnt, 1 AS followed
                     FROM followed_channels AS fc
                     JOIN channels AS c ON fc.nid = c.nid
                     JOIN users AS u ON u.uid = c.created_by
@@ -55,7 +55,7 @@ def index():
                 cursor.execute("""
                     WITH followed_channels AS (SELECT s.nid FROM subscribe AS s WHERE s.uid = %s),
                     channel_follower_cnt AS (SELECT s.nid, COUNT(s.uid) AS count FROM subscribe AS s GROUP BY s.nid)
-                    SELECT c.name, u.username AS created_by, cn.count AS follower_cnt, CASE WHEN c.nid IN (SELECT nid FROM followed_channels) THEN 1 ELSE 0 END AS followed
+                    SELECT c.nid, c.name, u.username AS created_by, cn.count AS follower_cnt, CASE WHEN c.nid IN (SELECT nid FROM followed_channels) THEN 1 ELSE 0 END AS followed
                     FROM channels AS c
                     JOIN users AS u ON u.uid = c.created_by
                     JOIN channel_follower_cnt AS cn ON cn.nid = c.nid;
@@ -68,10 +68,10 @@ def index():
                     WITH followed_channels AS (SELECT s.nid FROM subscribe AS s WHERE s.uid = %s),
                     managed_channels AS (SELECT s.nid FROM manage_channel AS s WHERE s.uid = %s),
                     channel_follower_cnt AS (SELECT s.nid, COUNT(s.uid) AS count FROM subscribe AS s GROUP BY s.nid)
-                    SELECT c.name, u.username AS created_by, cn.count AS follower_cnt, CASE WHEN c.nid IN (SELECT nid FROM followed_channels) THEN 1 ELSE 0 END AS followed
+                    SELECT c.nid, c.name, u.username AS created_by, cn.count AS follower_cnt, CASE WHEN c.nid IN (SELECT nid FROM followed_channels) THEN 1 ELSE 0 END AS followed
                     FROM managed_channels AS mc
                     JOIN channels AS c ON mc.nid = c.nid
-                    JOIN users AS u ON users.uid = c.created_by
+                    JOIN users AS u ON u.uid = c.created_by
                     JOIN channel_follower_cnt AS cn ON cn.nid = c.nid;
                 """, (session['userid'], session['userid']))
                 channels = cursor.fetchall()

@@ -52,18 +52,18 @@
                 {% for channel in channels %}
                 <tr class="{{ channel.name }}">
                     <td>
-                        <a href="{{ url_for('/index', view=view_type, selected_channel=channel.nid) }}">
+                        <a href="{{ url_for('index', view=view_type, selected_channel=channel.nid) }}">
                             {{ channel.name }}
                         </a>
                     </td>
                     <td>{{ channel.created_by }}</td>
                     <td>{{ channel.follower_cnt }}</td>
                     <td class="actions">
-                        {% if channel.followed %}
-                            <a href="{{ url_for('/unfollow', channel_nid=channel.nid, view=view_type, selected_channel=selected_channel) }}" 
+                        {% if channel.followed == 1 %}
+                            <a href="{{ url_for('unfollow', channel_id=channel.nid, view=view_type, selected_channel=selected_channel) }}" 
                                 class="btn btn-sm btn-danger">取消关注</a>
                         {% else %}
-                            <a href="{{ url_for('/follow', channel_nid=channel.nid, view=view_type, selected_channel=selected_channel) }}" 
+                            <a href="{{ url_for('follow', channel_id=channel.nid, view=view_type, selected_channel=selected_channel) }}" 
                                 class="btn btn-sm btn-primary">关注</a>
                         {% endif %}
                     </td>
@@ -102,7 +102,7 @@
                     {% for post in posts %}
                     <tr>
                         <td>
-                            <a href="{{ url_for('/post', post_id=post.pid) }}">
+                            <a href="{{ url_for('post', post_id=post.pid) }}">
                                 {{ post.title }}
                             </a>
                         </td>
@@ -110,7 +110,7 @@
                         <td>{{ post.like_cnt }}</td>
                         {% if view_type == 'managed' %}
                         <td class="actions">
-                            <a href="{{ url_for('/delete_post', post_id=post.pid) }}" 
+                            <a href="{{ url_for('delete_post', post_id=post.pid) }}" 
                             class="btn btn-sm btn-danger" 
                             onclick="return confirm('确定要删除这篇推文吗？')">删除</a>
                         </td>
