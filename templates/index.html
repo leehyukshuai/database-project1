@@ -79,7 +79,10 @@
             {% if selected_channel %}
                 {{ selected_channel.name }}的推文
             {% else %}
-                关注的公众号的推文
+                {% if view_type == 'followed' %}已关注的公众号的推文
+                {% elif view_type == 'all' %}所有公众号的推文
+                {% elif view_type == 'managed' %}管理的公众号的推文
+                {% endif %}
             {% endif %}
         </h2>
         
