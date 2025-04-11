@@ -76,8 +76,9 @@
         <h1>{{ post.title }}</h1>
         <p class="meta">
             来自公众号：<strong>{{ post.channel_name }}</strong> | 
-            发布日期：{{ post.created_at.strftime('%Y-%m-%d %H:%M') }} | 
-            评论数：{{ post.comment_count }}
+            点赞数：{{ post.liker_count }} |
+            评论数：{{ post.comment_count }} |
+            发布日期：{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}
         </p>
         <div class="likers">
             点赞用户：{% if likers %}{{ likers|join(', ') }}{% else %}暂无点赞{% endif %}
@@ -91,14 +92,14 @@
             <div class="comments">
             {% for comment in comments %}
                 <div class="comment">
-                    {% if comment.reply_to %}
-                    <div class="reply-to">
-                        回复 @{{ comment.reply_to.user }}: {{ comment.reply_to.content|truncate(30) }}
-                    </div>
-                    {% endif %}
                     <div class="comment-header">
                         <span class="comment-username">{{ comment.username }}</span>
                     </div>
+                    {% if comment.reply_to_user %}
+                    <div class="reply-to">
+                        @{{ comment.reply_to_user }}: {{ comment.reply_to_content|truncate(30) }}
+                    </div>
+                    {% endif %}
                     <div class="comment-content">{{ comment.content }}</div>
                     {% if comment.likers %}
                     <div class="comment-likers">

@@ -7,6 +7,7 @@ db_config = {
     "password": "",
     "database": "db_hs",
     "charset": "utf8mb4",
+    "autocommit": True
 }
 
 def create_db():

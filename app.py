@@ -201,7 +201,8 @@ def register():
                 """,
                     (username, password),
                 )
-            connection.commit()
+            # # autocommit已经被启用，无需手动commit
+            # connection.commit()
             # 如果注册成功，重定向到登录页面
             flash("Register success, please login", "success")
             return redirect(url_for("login"))
@@ -432,22 +433,23 @@ def delete_post():
 @app.route("/show_post/<post_id>")
 def show_post(post_id):
     # TODO: 添加点赞和评论的交互
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
+    with get_db_connection() as conn:
+        with conn.cursor(pymysql.cursors.DictCursor) as dictcursor, conn.cursor() as cursor:
             # 获取文章信息（添加总评论数）
-            cursor.execute(
+            dictcursor.execute(
                 """
-                SELECT p.*, c.name, 
+                SELECT p.*, c.name AS channel_name, 
                 (SELECT COUNT(*) FROM comments WHERE pid = p.pid) AS comment_count
                 FROM posts AS p 
                 JOIN channels c ON p.from_channel = c.nid 
                 WHERE p.pid = %s
             """,
-                (post_id,),
+                (post_id),
             )
-            post = cursor.fetchone()
-
+            post = dictcursor.fetchone()
+            if post is None:
+                return redirect(url_for("index"))
+            
             # 获取点赞用户列表
             cursor.execute(
                 """
@@ -458,12 +460,14 @@ def show_post(post_id):
             """,
                 (post_id,),
             )
-            likers = [row[0] for row in cursor.fetchall()]
+            likers = [i[0] for i in cursor.fetchall()]
 
-            # 修正后的评论查询
-            def get_comments(parent_id=None):
+            post['liker_count'] = len(likers)
+
+            # 结构化查询评论
+            def get_comments(parent_comment_id=None):
                 base_query = """
-                    SELECT c.*, u.username, 
+                    SELECT c.cid, u.username, c.content,
                     ru.username AS reply_to_user, rc.content AS reply_to_content
                     FROM comments c
                     LEFT JOIN users u ON c.from_user = u.uid
@@ -473,29 +477,20 @@ def show_post(post_id):
                 """
                 params = [post_id]
 
-                if parent_id is None:
+                if parent_comment_id is None:
                     base_query += " AND c.master_comment IS NULL"
                 else:
                     base_query += " AND c.master_comment = %s"
-                    params.append(parent_id)
+                    params.append(parent_comment_id)
 
-                cursor.execute(base_query, tuple(params))
+                dictcursor.execute(base_query, tuple(params))
 
                 comments = []
-                for comment in cursor.fetchall():
-                    comment_dict = {
-                        "cid": comment[0],
-                        "username": comment[7],
-                        "content": comment[5],
-                        "reply_to": (
-                            {"user": comment[8], "content": comment[9]}
-                            if comment[8]
-                            else None
-                        ),
-                        "replies": get_comments(comment[0]),
-                        "likers": get_comment_likers(comment[0]),
-                    }
-                    comments.append(comment_dict)
+                for comment in dictcursor.fetchall():
+                    comment['likers'] = get_comment_likers(comment['cid'])
+                    if parent_comment_id is None:
+                        comment['replies'] = get_comments(comment['cid'])
+                    comments.append(comment)
                 return comments
 
             # 获取评论点赞者
@@ -513,27 +508,12 @@ def show_post(post_id):
 
             comments_tree = get_comments()
 
-        return render_template(
-            "post.html",
-            post=dict(
-                zip(
-                    [
-                        "pid",
-                        "title",
-                        "from_channel",
-                        "content",
-                        "created_at",
-                        "channel_name",
-                        "comment_count",
-                    ],
-                    post,
-                )
-            ),
-            comments=comments_tree,
-            likers=likers,
-        )
-    finally:
-        conn.close()
+    return render_template(
+        "post.html",
+        post=post,
+        comments=comments_tree,
+        likers=likers,
+    )
 
 
 if __name__ == "__main__":
