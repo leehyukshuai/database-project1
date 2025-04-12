@@ -1,4 +1,13 @@
-from flask import Flask, render_template, request, redirect, session, flash, url_for
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    session,
+    flash,
+    url_for,
+    jsonify,
+)
 import pymysql
 import pymysql.cursors
 
@@ -13,7 +22,7 @@ def get_db_connection():
 
 
 # TODO: 添加修改密码的逻辑
-# TODO: 处理用户不按照逻辑输入缺省参数的url
+# TODO: 处理用户不按照逻辑输入缺省参数的url(也可以直接忽略)
 
 
 @app.route("/")
@@ -434,7 +443,9 @@ def delete_post():
 def show_post(post_id):
     # TODO: 添加点赞和评论的交互
     with get_db_connection() as conn:
-        with conn.cursor(pymysql.cursors.DictCursor) as dictcursor, conn.cursor() as cursor:
+        with conn.cursor(
+            pymysql.cursors.DictCursor
+        ) as dictcursor, conn.cursor() as cursor:
             # 获取文章信息（添加总评论数）
             dictcursor.execute(
                 """
@@ -449,7 +460,7 @@ def show_post(post_id):
             post = dictcursor.fetchone()
             if post is None:
                 return redirect(url_for("index"))
-            
+
             # 获取点赞用户列表
             cursor.execute(
                 """
@@ -461,8 +472,11 @@ def show_post(post_id):
                 (post_id,),
             )
             likers = [i[0] for i in cursor.fetchall()]
+            if "username" in session:
+                user_name = session["username"]
+                post["liked"] = user_name in likers
 
-            post['liker_count'] = len(likers)
+            post["liker_count"] = len(likers)
 
             # 结构化查询评论
             def get_comments(parent_comment_id=None):
@@ -487,9 +501,12 @@ def show_post(post_id):
 
                 comments = []
                 for comment in dictcursor.fetchall():
-                    comment['likers'] = get_comment_likers(comment['cid'])
+                    comment["likers"] = get_comment_likers(comment["cid"])
+                    if "username" in session:
+                        user_name = session["username"]
+                        comment["liked"] = user_name in comment["likers"]
                     if parent_comment_id is None:
-                        comment['replies'] = get_comments(comment['cid'])
+                        comment["replies"] = get_comments(comment["cid"])
                     comments.append(comment)
                 return comments
 
@@ -514,6 +531,137 @@ def show_post(post_id):
         comments=comments_tree,
         likers=likers,
     )
+
+
+@app.route("/like_post", methods=["POST"])
+def like_post():
+    if "userid" not in session:
+        return jsonify({"success": False, "message": "请先登录"})
+
+    post_id = request.form.get("post_id")
+    user_id = session["userid"]
+
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT * FROM like_post
+                WHERE uid = %s AND pid = %s
+                """,
+                (user_id, post_id),
+            )
+            result = cursor.fetchone()
+
+            if result:
+                # 如果已经点赞，取消点赞
+                cursor.execute(
+                    """
+                    DELETE FROM like_post
+                    WHERE uid = %s AND pid = %s
+                    """,
+                    (user_id, post_id),
+                )
+                connection.commit()
+                return jsonify(
+                    {"success": True, "message": "取消点赞成功", "liked": False}
+                )
+            else:
+                # 如果未点赞，添加点赞
+                cursor.execute(
+                    """
+                    INSERT INTO like_post (uid, pid)
+                    VALUES (%s, %s)
+                    """,
+                    (user_id, post_id),
+                )
+                connection.commit()
+                return jsonify({"success": True, "message": "点赞成功", "liked": True})
+    except Exception as e:
+        return jsonify({"success": False, "message": "操作失败"})
+    finally:
+        connection.close()
+
+
+@app.route("/like_comment", methods=["POST"])
+def like_comment():
+    if "userid" not in session:
+        return jsonify({"success": False, "message": "请先登录"})
+
+    comment_id = request.form.get("comment_id")
+    post_id = request.form.get("post_id")
+    user_id = session["userid"]
+
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT * FROM like_comment
+                WHERE uid = %s AND pid = %s AND cid = %s
+                """,
+                (user_id, post_id, comment_id),
+            )
+            result = cursor.fetchone()
+
+            if result:
+                # 如果已经点赞，取消点赞
+                cursor.execute(
+                    """
+                    DELETE FROM like_comment
+                    WHERE uid = %s AND pid = %s AND cid = %s
+                    """,
+                    (user_id, post_id, comment_id),
+                )
+                connection.commit()
+                return jsonify(
+                    {"success": True, "message": "取消点赞成功", "liked": False}
+                )
+            else:
+                # 如果未点赞，添加点赞
+                cursor.execute(
+                    """
+                    INSERT INTO like_comment (uid, pid, cid)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (user_id, post_id, comment_id),
+                )
+                connection.commit()
+                return jsonify({"success": True, "message": "点赞成功", "liked": True})
+    except Exception as e:
+        return jsonify({"success": False, "message": "操作失败"})
+    finally:
+        connection.close()
+
+
+@app.route("/add_comment", methods=["POST"])
+def add_comment():
+    if "userid" not in session:
+        return jsonify({"success": False, "message": "请先登录"})
+
+    post_id = request.form.get("post_id")
+    user_id = session["userid"]
+    content = request.form.get("content")
+    master_comment_id = request.form.get(
+        "master_comment_id"
+    )  # 如果是回复评论，则包含master_comment_id
+
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO comments (from_user, pid, content, master_comment)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (user_id, post_id, content, master_comment_id),
+            )
+        connection.commit()
+        return jsonify({"success": True, "message": "评论成功"})
+    except Exception as e:
+        return jsonify({"success": False, "message": "评论失败"})
+    finally:
+        connection.close()
 
 
 if __name__ == "__main__":

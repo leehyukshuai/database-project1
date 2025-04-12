@@ -1,6 +1,6 @@
-<!-- templates/post.html -->
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>{{ post.title }}</title>
     <style>
@@ -9,6 +9,7 @@
             --secondary-color: #3498db;
             --background-color: #f8f9fa;
         }
+
         body {
             max-width: 800px;
             margin: 0 auto;
@@ -16,30 +17,35 @@
             background-color: var(--background-color);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+
         .post-header {
             background: white;
             padding: 2rem;
             border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-bottom: 2rem;
         }
+
         .likers {
             color: #666;
             font-size: 0.9em;
             margin: 10px 0;
         }
+
         .comments-section {
             background: white;
             padding: 2rem;
             border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
+
         .comment {
             margin: 1rem 0;
             padding: 1rem;
             border-left: 3px solid var(--secondary-color);
             background-color: #f8f9fa;
         }
+
         .reply-to {
             font-size: 0.9em;
             color: #666;
@@ -48,74 +54,297 @@
             border-radius: 3px;
             margin-bottom: 5px;
         }
+
         .comment-username {
             color: var(--primary-color);
             font-weight: bold;
         }
+
         .comment-likers {
             margin-top: 5px;
             font-size: 0.8em;
             color: #6c757d;
         }
-        .comment-likers span {
-            margin-right: 5px;
-        }
+
         .comment-content {
             margin: 5px 0;
             line-height: 1.5;
         }
+
         .replies {
             margin-left: 2rem;
             border-left: 2px solid #ddd;
             padding-left: 1rem;
         }
+
+        .like-btn {
+            background: none;
+            border: none;
+            color: var(--secondary-color);
+            cursor: pointer;
+            font-size: 1rem;
+            margin-left: 10px;
+        }
+
+        .comment-form {
+            margin: 2rem 0;
+        }
+
+        .comment-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .comment-submit {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .reply-form {
+            display: none;
+            margin: 10px 0;
+        }
     </style>
 </head>
+
 <body>
     <div class="post-header">
         <h1>{{ post.title }}</h1>
         <p class="meta">
-            来自公众号：<strong>{{ post.channel_name }}</strong> | 
+            来自公众号：<strong>{{ post.channel_name }}</strong> |
             点赞数：{{ post.liker_count }} |
             评论数：{{ post.comment_count }} |
             发布日期：{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}
         </p>
-        <div class="likers">
+        <div class="likers" id="post-likers">
             点赞用户：{% if likers %}{{ likers|join(', ') }}{% else %}暂无点赞{% endif %}
         </div>
         <article>{{ post.content }}</article>
+        {% if "userid" in session %}
+        <button class="like-btn" data-liked="{{ 'true' if post.liked else 'false' }}"
+            onclick="toggleLikePost('{{ post.pid }}')">
+            ♥ {{ '取消点赞' if post.liked else '点赞' }}
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="comment-form">
+        <textarea id="comment-content" class="comment-input" placeholder="写下你的评论..."></textarea>
+        <button class="comment-submit" onclick="addComment('{{ post.pid }}', null)">提交评论</button>
     </div>
 
     <div class="comments-section">
         <h3>评论列表</h3>
         {% macro render_comments(comments) %}
-            <div class="comments">
+        <div class="comments">
             {% for comment in comments %}
-                <div class="comment">
-                    <div class="comment-header">
-                        <span class="comment-username">{{ comment.username }}</span>
-                    </div>
-                    {% if comment.reply_to_user %}
-                    <div class="reply-to">
-                        @{{ comment.reply_to_user }}: {{ comment.reply_to_content|truncate(30) }}
-                    </div>
-                    {% endif %}
-                    <div class="comment-content">{{ comment.content }}</div>
-                    {% if comment.likers %}
-                    <div class="comment-likers">
-                        ♥ 点赞用户：{% for liker in comment.likers %}<span>{{ liker }}</span>{% endfor %}
-                    </div>
-                    {% endif %}
-                    {% if comment.replies %}
-                    <div class="replies">
-                        {{ render_comments(comment.replies) }}
-                    </div>
-                    {% endif %}
+            <div class="comment">
+                <div class="comment-header">
+                    <span class="comment-username">{{ comment.username }}</span>
+                    <button class="like-btn" data-liked="{{ 'true' if comment.liked else 'false' }}"
+                        onclick="toggleLikeComment('{{ post.pid }}', '{{ comment.cid }}')">
+                        ♥ {{ '取消点赞' if comment.liked else '点赞' }}
+                    </button>
+                    <button class="reply-btn" onclick="showReplyForm('{{ post.pid }}', '{{ comment.cid }}')">回复</button>
                 </div>
-            {% endfor %}
+                {% if comment.reply_to_user %}
+                <div class="reply-to">
+                    @{{ comment.reply_to_user }}: {{ comment.reply_to_content|truncate(30) }}
+                </div>
+                {% endif %}
+                <div class="comment-content">{{ comment.content }}</div>
+                {% if comment.likers %}
+                <div class="comment-likers" id="comment-likers-{{ comment.cid }}">
+                    ♥ 点赞用户：{% for liker in comment.likers %} {{ liker }} {% endfor %}
+                </div>
+                {% endif %}
+                <div class="reply-form" id="reply-form-{{ comment.cid }}">
+                    <textarea class="comment-input" placeholder="回复 @{{ comment.username }}..."></textarea>
+                    <button class="comment-submit"
+                        onclick="addComment('{{ post.pid }}', '{{ comment.cid }}')">提交回复</button>
+                </div>
+                {% if comment.replies %}
+                <div class="replies">
+                    {{ render_comments(comment.replies) }}
+                </div>
+                {% endif %}
             </div>
+            {% endfor %}
+        </div>
         {% endmacro %}
         {{ render_comments(comments) }}
     </div>
+
+    <script>
+        function toggleLikePost(postId) {
+            const likeBtn = document.querySelector('.like-btn[data-liked]');
+            const isLiked = likeBtn.dataset.liked === 'true';
+
+            fetch('/like_post', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `post_id=${postId}`
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        likeBtn.dataset.liked = data.liked;
+                        likeBtn.textContent = data.liked ? '♥ 取消点赞' : '♥ 点赞';
+
+                        // 更新点赞数
+                        const metaElement = document.querySelector('.meta');
+                        const currentCount = parseInt(metaElement.innerHTML.match(/点赞数：(\d+)/)[1]);
+                        const newCount = data.liked ? currentCount + 1 : currentCount - 1;
+                        metaElement.innerHTML = metaElement.innerHTML.replace(/点赞数：\d+/, `点赞数：${newCount}`);
+
+                        // 更新点赞用户列表
+                        const likersElement = document.getElementById('post-likers');
+                        const username = "{{ session['username'] }}";
+
+                        if (data.liked) {
+                            if (likersElement.innerHTML.includes('暂无点赞')) {
+                                likersElement.innerHTML = `点赞用户：${username}`;
+                            } else {
+                                likersElement.innerHTML = likersElement.innerHTML.replace('暂无点赞', '');
+                                likersElement.innerHTML = `${likersElement.innerHTML}, ${username}`;
+                            }
+                        } else {
+                            likersElement.innerHTML = likersElement.innerHTML.replace(username, '');
+                            if (likersElement.innerHTML === '点赞用户：') {
+                                likersElement.innerHTML = '点赞用户：暂无点赞';
+                            }
+                        }
+                    } else {
+                        alert(data.message);
+                    }
+                });
+        }
+
+        function toggleLikeComment(postId, commentId) {
+
+            const targetSecondParameter = '2';
+
+            // 获取所有具有 onclick 属性的元素
+            const elements = document.querySelectorAll('.like-btn[data-liked][onclick]');
+
+            // 筛选出符合条件的元素
+            const likeBtn = Array.from(elements).filter(element => {
+                const onclickValue = element.getAttribute('onclick');
+                const match = onclickValue.match(/toggleLikeComment\('([^']*)', '([^']*)'\)/);
+                if (match && match.length >= 3) {
+                    return match[2] === `${commentId}`;
+                }
+                return false;
+            })[0];
+            const isLiked = likeBtn.dataset.liked === 'true';
+
+            fetch('/like_comment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `post_id=${postId}&comment_id=${commentId}`
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data)
+                    if (data.success) {
+                        likeBtn.dataset.liked = data.liked;
+                        likeBtn.textContent = data.liked ? '♥ 取消点赞' : '♥ 点赞';
+
+                        // 更新点赞用户列表
+                        const likersElement = document.getElementById(`comment-likers-${commentId}`);
+
+                        if (data.liked) {
+                            if (likersElement) {
+                                if (likersElement.innerHTML.includes('暂无点赞')) {
+                                    likersElement.innerHTML = `♥ 点赞用户：{{ session['username'] }}`;
+                                } else {
+                                    likersElement.innerHTML = `${likersElement.innerHTML} {{ session['username'] }}`;
+                                }
+                            } else {
+                                // 如果没有点赞用户列表，创建一个
+                                const commentElement = document.querySelector(`.comment[onclick*="${commentId}"]`);
+                                const likersDiv = document.createElement('div');
+                                likersDiv.className = 'comment-likers';
+                                likersDiv.id = `comment-likers-${commentId}`;
+                                likersDiv.innerHTML = `♥ 点赞用户：{{ session['username'] }}`;
+                                commentElement.appendChild(likersDiv);
+                            }
+                        } else {
+                            if (likersElement) {
+                                const newContent = likersElement.innerHTML.replace(`{{ session['username'] }}`, '');
+                                if (newContent === '♥ 点赞用户：') {
+                                    likersElement.innerHTML = '♥ 点赞用户：暂无点赞';
+                                } else {
+                                    likersElement.innerHTML = newContent;
+                                }
+                            }
+                        }
+                    } else {
+                        alert(data.message);
+                    }
+                });
+        }
+
+        function addComment(postId, masterCommentId) {
+            const contentInput = masterCommentId
+                ? document.querySelector(`#reply-form-${masterCommentId} textarea`)
+                : document.getElementById('comment-content');
+
+            const content = contentInput.value;
+            if (!content.trim()) {
+                alert('评论内容不能为空');
+                return;
+            }
+
+            fetch('/add_comment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `post_id=${postId}&content=${encodeURIComponent(content)}&master_comment_id=${masterCommentId || ''}`
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('评论成功');
+                        contentInput.value = '';
+                        fetchComments(postId);
+                    } else {
+                        alert(data.message);
+                    }
+                });
+        }
+
+        function showReplyForm(postId, commentId) {
+            const replyForm = document.getElementById(`reply-form-${commentId}`);
+            if (replyForm.style.display === 'block') {
+                replyForm.style.display = 'none';
+            } else {
+                replyForm.style.display = 'block';
+            }
+        }
+
+        function fetchComments(postId) {
+            fetch(`/show_post/${postId}`)
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    document.querySelector('.comments-section').innerHTML = doc.querySelector('.comments-section').innerHTML;
+                });
+        }
+    </script>
 </body>
+
 </html>
