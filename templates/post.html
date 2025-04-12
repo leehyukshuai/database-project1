@@ -206,7 +206,7 @@
 
     <div class="comment-form">
         <textarea id="comment-content" class="comment-input" placeholder="写下你的评论..."></textarea>
-        <button class="comment-submit" onclick="addComment('{{ post.pid }}', null)">提交评论</button>
+        <button class="comment-submit" onclick="addComment('{{ post.pid }}', null, null)">提交评论</button>
     </div>
 
     <div class="comments-section">
@@ -368,6 +368,9 @@
         }
 
         function addComment(postId, toCommentId, masterCommentId) {
+            if (toCommentId !== "None" && masterCommentId === "None")
+                masterCommentId = toCommentId;
+
             const contentInput = toCommentId
                 ? document.querySelector(`#reply-form-${toCommentId} textarea`)
                 : document.getElementById('comment-content');

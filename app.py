@@ -690,11 +690,11 @@ def add_comment():
     if "userid" not in session:
         return jsonify({"success": False, "message": "请先登录"})
 
-    post_id = request.form.get("post_id")
+    post_id = request.form.get("post_id", type=int)
     user_id = session["userid"]
     content = request.form.get("content")
-    master_comment_id = request.form.get("master_comment_id")
-    to_comment_id = request.form.get("to_comment_id")
+    master_comment_id = request.form.get("master_comment_id", type=int)
+    to_comment_id = request.form.get("to_comment_id", type=int)
 
     connection = get_db_connection()
     try:
@@ -709,6 +709,7 @@ def add_comment():
         connection.commit()
         return jsonify({"success": True, "message": "评论成功"})
     except Exception as e:
+        print(e)
         return jsonify({"success": False, "message": "评论失败"})
     finally:
         connection.close()
