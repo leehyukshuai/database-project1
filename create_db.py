@@ -7,8 +7,9 @@ db_config = {
     "password": "",
     "database": "db_hs",
     "charset": "utf8mb4",
-    "autocommit": True
+    "autocommit": True,
 }
+
 
 def create_db():
     # 创建数据库连接
@@ -63,9 +64,9 @@ def create_db():
             cursor.execute(
                 """
             CREATE TABLE comments (
-                cid INT,
-                pid INT,
-                from_user INT,
+                cid INT NOT NULL,
+                pid INT NOT NULL,
+                from_user INT NOT NULL,
                 to_comment INT,
                 master_comment INT,
                 content TEXT NOT NULL,
@@ -77,6 +78,23 @@ def create_db():
                 PRIMARY KEY (cid, pid)
             );
             """
+            )
+
+            cursor.execute(
+                """
+                CREATE TRIGGER before_comment_insert
+                BEFORE INSERT ON comments
+                FOR EACH ROW
+                BEGIN
+                    DECLARE max_cid INT;
+                    SET max_cid = (SELECT MAX(cid) FROM comments WHERE pid = NEW.pid);
+                    IF max_cid IS NULL THEN
+                        SET NEW.cid = 1;
+                    ELSE
+                        SET NEW.cid = max_cid + 1;
+                    END IF;
+                END;
+                """
             )
 
             cursor.execute(
@@ -126,7 +144,7 @@ def create_db():
                 """
             CREATE TABLE like_comment (
                 uid INT NOT NULL,
-                cid INT NOT NULL,
+                cid INT,
                 pid INT NOT NULL,
                 FOREIGN KEY (uid) REFERENCES users(uid),
                 FOREIGN KEY (cid, pid) REFERENCES comments(cid, pid)
@@ -248,43 +266,6 @@ def create_db():
             (8, 3),          -- Mental Health属于Health
             (9, 4),          -- Vacation Planning属于Travel
             (10, 1);         -- Future of Work属于Technology
-
-            -- 插入评论数据（复杂结构）"""
-            )
-
-            cursor.execute(
-                """
-            -- 对于推文1的评论
-            INSERT INTO comments (cid, pid, from_user, to_comment, master_comment, content) VALUES 
-            (0, 1, 2, NULL, NULL, 'Great insights on AI!'),  -- 根评论
-            (1, 1, 3, 0, 0, 'I agree, especially about neural networks.'),  -- 回复根评论
-            (2, 1, 5, 0, 0, 'What about ethical considerations?'),  -- 回复根评论
-            (3, 1, 1, 1, 0, 'Thanks! I think ethics is crucial too.'),  -- 回复评论1
-            (4, 1, 4, 2, 0, 'That''s a good point. We need more discussion on AI ethics.');  -- 回复评论2
-            """
-            )
-
-            cursor.execute(
-                """
-            -- 对于推文2的评论
-            INSERT INTO comments (cid, pid, from_user, to_comment, master_comment, content) VALUES 
-            (0, 2, 1, NULL, NULL, 'Which smartphone do you recommend?'),  -- 根评论
-            (1, 2, 3, 0, 0, 'I prefer the newer model for battery life.'),  -- 回复根评论
-            (2, 2, 5, 0, 0, 'Price is also a factor for me.'),  -- 回复根评论
-            (3, 2, 2, 1, 0, 'Battery life is important, but so is camera quality.'),  -- 回复评论1
-            (4, 2, 4, 2, 0, 'Agreed. Value for money is key.');  -- 回复评论2
-            """
-            )
-
-            cursor.execute(
-                """
-            -- 对于推文5的评论
-            INSERT INTO comments (cid, pid, from_user, to_comment, master_comment, content) VALUES 
-            (0, 5, 4, NULL, NULL, 'Fascinating developments in space!'),  -- 根评论
-            (1, 5, 5, 0, 0, 'I hope we see more missions soon.'),  -- 回复根评论
-            (2, 5, 2, 0, 0, 'What about Mars colonization?'),  -- 回复根评论
-            (3, 5, 3, 1, 0, 'Me too! Space exploration inspires innovation.'),  -- 回复评论1
-            (4, 5, 1, 2, 0, 'That''s the next big frontier. Very exciting!');  -- 回复评论2
             """
             )
 
@@ -302,20 +283,6 @@ def create_db():
 
             cursor.execute(
                 """
-            -- 插入用户点赞评论的关系
-            INSERT INTO like_comment (uid, cid, pid) VALUES 
-            (1, 0, 1), (1, 3, 1),  -- Alice点赞推文1的评论0和3
-            (2, 1, 2), (2, 4, 2),  -- Bob点赞推文2的评论1和4
-            (3, 0, 5), (3, 2, 5),  -- Charlie点赞推文5的评论0和2
-            (4, 4, 5),             -- David点赞推文5的评论4
-            (5, 0, 1), (5, 1, 1), (5, 2, 1), (5, 3, 1), (5, 4, 1),  -- Eve点赞推文1的所有评论
-            (5, 0, 2), (5, 1, 2), (5, 2, 2), (5, 3, 2), (5, 4, 2),  -- Eve点赞推文2的所有评论
-            (5, 0, 5), (5, 1, 5), (5, 2, 5), (5, 3, 5), (5, 4, 5);  -- Eve点赞推文5的所有评论
-            """
-            )
-
-            cursor.execute(
-                """
             -- 插入用户感兴趣的主题关系
             INSERT INTO interested_in_theme (uid, tid) VALUES 
             (1, 1), (1, 2), (1, 5),  -- Alice对Technology, Science, Gadgets感兴趣
@@ -324,6 +291,268 @@ def create_db():
             (4, 2), (4, 3), (4, 4),  -- David对Science, Health, Travel感兴趣
             (5, 1), (5, 2), (5, 3), (5, 4), (5, 5);  -- Eve对所有主题感兴趣
             """
+            )
+
+            # 插入评论数据
+            cursor.execute(
+                """
+                -- 推文 1 的评论
+                INSERT INTO comments (pid, from_user, to_comment, master_comment, content) VALUES 
+                (1, 2, NULL, NULL, 'Very insightful article on AI!'),
+                (1, 3, NULL, NULL, 'I think AI will change everything.'),
+                (1, 4, NULL, NULL, 'What about the ethical implications?'),
+                (1, 5, 1, 1, 'I agree, especially in healthcare applications.'),
+                (1, 1, 1, 1, 'Also in autonomous vehicles!'),
+                (1, 2, 3, 1, 'Great point about ethics. We need more regulation.');
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 2 的评论
+                INSERT INTO comments (pid, from_user, to_comment, master_comment, content) VALUES 
+                (2, 1, NULL, NULL, 'Which smartphone do you recommend?'),
+                (2, 3, NULL, NULL, 'I prefer the new iPhone.'),
+                (2, 4, NULL, NULL, 'Android all the way!'),
+                (2, 5, 2, 2, 'I agree, but the battery life could be better.'),
+                (2, 2, 2, 2, 'The camera is amazing though.'),
+                (2, 1, 4, 2, 'Battery life is a big issue for me.');
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 3 的评论
+                INSERT INTO comments (pid, from_user, to_comment, master_comment, content) VALUES 
+                (3, 4, NULL, NULL, 'Quantum computing is fascinating!'),
+                (3, 5, NULL, NULL, 'How soon until it''s mainstream?'),
+                (3, 2, NULL, NULL, 'I''m still trying to wrap my head around it.'),
+                (3, 1, 3, 3, 'Same here, the concepts are mind-bending.'),
+                (3, 3, 3, 3, 'Start with basic qubits and work your way up.'),
+                (3, 4, 3, 3, 'Any good resources for beginners?');
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 4 的评论
+                INSERT INTO comments (pid, from_user, to_comment, master_comment, content) VALUES 
+                (4, 5, NULL, NULL, 'These wearables are getting so advanced.'),
+                (4, 1, NULL, NULL, 'I use one for fitness tracking.'),
+                (4, 2, NULL, NULL, 'The health monitoring features are impressive.'),
+                (4, 3, 2, 2, 'Yes, they''ve helped me stay more active.'),
+                (4, 4, 2, 2, 'Battery life is still a problem though.'),
+                (4, 5, 2, 2, 'Agreed, needs improvement.');
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 5 的评论
+                INSERT INTO comments (pid, from_user, to_comment, master_comment, content) VALUES 
+                (5, 1, NULL, NULL, 'Exciting times for space exploration!'),
+                (5, 2, NULL, NULL, 'Mars colonization is next.'),
+                (5, 3, NULL, NULL, 'What about the environmental impact?'),
+                (5, 4, 1, 1, 'We need to balance exploration with sustainability.'),
+                (5, 5, 1, 1, 'Agreed, but the potential benefits are huge.'),
+                (5, 1, 1, 1, 'Let''s hope for responsible development.');
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 6 的评论
+                INSERT INTO comments (pid, from_user, to_comment, master_comment, content) VALUES 
+                (6, 2, NULL, NULL, 'Nutrition is so important for energy levels.'),
+                (6, 3, NULL, NULL, 'What''s your favorite healthy recipe?'),
+                (6, 4, NULL, NULL, 'I love smoothies in the morning.'),
+                (6, 5, 1, 1, 'Oatmeal with berries works for me.'),
+                (6, 1, 1, 1, 'I''ve been into kale salads lately.'),
+                (6, 2, 1, 1, 'Need to try that, thanks!');
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 7 的评论
+                INSERT INTO comments (pid, from_user, to_comment, master_comment, content) VALUES 
+                (7, 3, NULL, NULL, 'So many amazing places to visit!'),
+                (7, 4, NULL, NULL, 'I''m planning a trip next year.'),
+                (7, 5, NULL, NULL, 'Any recommendations in Europe?'),
+                (7, 1, 1, 1, 'I loved Italy, the food was incredible.'),
+                (7, 2, 1, 1, 'New Zealand is stunning too.'),
+                (7, 3, 1, 1, 'I''d love to go to Japan someday.');
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 8 的评论
+                INSERT INTO comments (pid, from_user, to_comment, master_comment, content) VALUES 
+                (8, 4, NULL, NULL, 'Mental health awareness is so important.'),
+                (8, 5, NULL, NULL, 'Meditation has helped me a lot.'),
+                (8, 1, NULL, NULL, 'Talking to someone makes a big difference.'),
+                (8, 2, 1, 1, 'I''ve started journaling, it''s therapeutic.'),
+                (8, 3, 1, 1, 'Exercise is my go-to stress reliever.'),
+                (8, 4, 1, 1, 'Same here, even a short walk helps.');
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 9 的评论
+                INSERT INTO comments (pid, from_user, to_comment, master_comment, content) VALUES 
+                (9, 1, NULL, NULL, 'Planning a vacation can be stressful.'),
+                (9, 2, NULL, NULL, 'Use a good travel app to organize everything.'),
+                (9, 3, NULL, NULL, 'I always research local customs beforehand.'),
+                (9, 4, 1, 1, 'Packing light is key for stress-free travel.'),
+                (9, 5, 1, 1, 'Agreed, but don''t forget essentials!'),
+                (9, 1, 1, 1, 'Check visa requirements early.');
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 10 的评论
+                INSERT INTO comments (pid, from_user, to_comment, master_comment, content) VALUES 
+                (10, 2, NULL, NULL, 'Remote work is here to stay.'),
+                (10, 3, NULL, NULL, 'I love the flexibility.'),
+                (10, 4, NULL, NULL, 'But I miss the office interaction.'),
+                (10, 5, 1, 1, 'Hybrid models seem to be the future.'),
+                (10, 1, 1, 1, 'Agreed, balance is important.'),
+                (10, 2, 1, 1, 'Productivity has actually increased for me.');
+                """
+            )
+
+            # 插入评论点赞数据
+            cursor.execute(
+                """
+                -- 推文 1 的评论点赞
+                INSERT INTO like_comment (uid, cid, pid) VALUES 
+                (1, 1, 1), (3, 1, 1), (5, 1, 1),
+                (2, 2, 1), (4, 2, 1),
+                (3, 3, 1), (5, 3, 1),
+                (4, 4, 1),
+                (5, 5, 1),
+                (2, 6, 1);
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 2 的评论点赞
+                INSERT INTO like_comment (uid, cid, pid) VALUES 
+                (3, 1, 2), (5, 1, 2),
+                (1, 2, 2), (4, 2, 2),
+                (2, 3, 2), (5, 3, 2),
+                (3, 4, 2),
+                (4, 5, 2),
+                (1, 6, 2);
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 3 的评论点赞
+                INSERT INTO like_comment (uid, cid, pid) VALUES 
+                (2, 1, 3), (4, 1, 3),
+                (1, 2, 3), (3, 2, 3),
+                (5, 3, 3),
+                (2, 4, 3),
+                (3, 5, 3),
+                (4, 6, 3);
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 4 的评论点赞
+                INSERT INTO like_comment (uid, cid, pid) VALUES 
+                (1, 1, 4), (5, 1, 4),
+                (2, 2, 4), (3, 2, 4),
+                (4, 3, 4),
+                (5, 4, 4),
+                (1, 5, 4),
+                (3, 6, 4);
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 5 的评论点赞
+                INSERT INTO like_comment (uid, cid, pid) VALUES 
+                (2, 1, 5), (4, 1, 5),
+                (1, 2, 5), (3, 2, 5),
+                (5, 3, 5),
+                (2, 4, 5),
+                (3, 5, 5),
+                (4, 6, 5);
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 6 的评论点赞
+                INSERT INTO like_comment (uid, cid, pid) VALUES 
+                (3, 1, 6), (5, 1, 6),
+                (1, 2, 6), (4, 2, 6),
+                (2, 3, 6),
+                (5, 4, 6),
+                (1, 5, 6),
+                (3, 6, 6);
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 7 的评论点赞
+                INSERT INTO like_comment (uid, cid, pid) VALUES 
+                (4, 1, 7), (5, 1, 7),
+                (1, 2, 7), (3, 2, 7),
+                (2, 3, 7),
+                (5, 4, 7),
+                (1, 5, 7),
+                (2, 6, 7);
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 8 的评论点赞
+                INSERT INTO like_comment (uid, cid, pid) VALUES 
+                (3, 1, 8), (5, 1, 8),
+                (1, 2, 8), (4, 2, 8),
+                (2, 3, 8),
+                (5, 4, 8),
+                (1, 5, 8),
+                (3, 6, 8);
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 9 的评论点赞
+                INSERT INTO like_comment (uid, cid, pid) VALUES 
+                (2, 1, 9), (4, 1, 9),
+                (1, 2, 9), (5, 2, 9),
+                (3, 3, 9),
+                (5, 4, 9),
+                (1, 5, 9),
+                (2, 6, 9);
+                """
+            )
+
+            cursor.execute(
+                """
+                -- 推文 10 的评论点赞
+                INSERT INTO like_comment (uid, cid, pid) VALUES 
+                (3, 1, 10), (5, 1, 10),
+                (1, 2, 10), (4, 2, 10),
+                (2, 3, 10),
+                (5, 4, 10),
+                (1, 5, 10),
+                (3, 6, 10);
+                """
             )
 
         connection.commit()

@@ -161,14 +161,15 @@
                 {% endif %}
                 <div class="comment-content">{{ comment.content }}</div>
                 {% if comment.likers %}
-                <div class="comment-likers" id="comment-likers-{{ comment.cid }}">
-                    ♥ 点赞用户：{% for liker in comment.likers %} {{ liker }} {% endfor %}
-                </div>
+                <div class="comment-likers" id="comment-likers-{{ comment.cid }}">♥ 点赞用户：{% for liker in comment.likers
+                    %} {{ liker }} {% endfor %}</div>
+                {% else %}
+                <div class="comment-likers" id="comment-likers-{{ comment.cid }}">♥ 点赞用户：暂无点赞</div>
                 {% endif %}
                 <div class="reply-form" id="reply-form-{{ comment.cid }}">
                     <textarea class="comment-input" placeholder="回复 @{{ comment.username }}..."></textarea>
                     <button class="comment-submit"
-                        onclick="addComment('{{ post.pid }}', '{{ comment.cid }}')">提交回复</button>
+                        onclick="addComment('{{ post.pid }}', '{{ comment.cid }}', '{{ comment.master_comment }}')">提交回复</button>
                 </div>
                 {% if comment.replies %}
                 <div class="replies">
@@ -283,7 +284,8 @@
                         } else {
                             if (likersElement) {
                                 const newContent = likersElement.innerHTML.replace(`{{ session['username'] }}`, '');
-                                if (newContent === '♥ 点赞用户：') {
+                                const reg = /^♥ 点赞用户： *$/
+                                if (reg.test(newContent)) {
                                     likersElement.innerHTML = '♥ 点赞用户：暂无点赞';
                                 } else {
                                     likersElement.innerHTML = newContent;
@@ -296,9 +298,9 @@
                 });
         }
 
-        function addComment(postId, masterCommentId) {
-            const contentInput = masterCommentId
-                ? document.querySelector(`#reply-form-${masterCommentId} textarea`)
+        function addComment(postId, toCommentId, masterCommentId) {
+            const contentInput = toCommentId
+                ? document.querySelector(`#reply-form-${toCommentId} textarea`)
                 : document.getElementById('comment-content');
 
             const content = contentInput.value;
@@ -312,12 +314,11 @@
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: `post_id=${postId}&content=${encodeURIComponent(content)}&master_comment_id=${masterCommentId || ''}`
+                body: `post_id=${postId}&content=${encodeURIComponent(content)}&to_comment_id=${toCommentId || ''}&master_comment_id=${masterCommentId || ''}`
             })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        alert('评论成功');
                         contentInput.value = '';
                         fetchComments(postId);
                     } else {

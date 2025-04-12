@@ -481,7 +481,7 @@ def show_post(post_id):
             # 结构化查询评论
             def get_comments(parent_comment_id=None):
                 base_query = """
-                    SELECT c.cid, u.username, c.content,
+                    SELECT c.cid, u.username, c.content, c.master_comment,
                     ru.username AS reply_to_user, rc.content AS reply_to_content
                     FROM comments c
                     LEFT JOIN users u ON c.from_user = u.uid
@@ -496,6 +496,8 @@ def show_post(post_id):
                 else:
                     base_query += " AND c.master_comment = %s"
                     params.append(parent_comment_id)
+
+                base_query += " ORDER BY c.created_at DESC;"
 
                 dictcursor.execute(base_query, tuple(params))
 
@@ -642,19 +644,18 @@ def add_comment():
     post_id = request.form.get("post_id")
     user_id = session["userid"]
     content = request.form.get("content")
-    master_comment_id = request.form.get(
-        "master_comment_id"
-    )  # 如果是回复评论，则包含master_comment_id
+    master_comment_id = request.form.get("master_comment_id")
+    to_comment_id = request.form.get("to_comment_id")
 
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                INSERT INTO comments (from_user, pid, content, master_comment)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO comments (pid, from_user, to_comment, master_comment, content) VALUES 
+                (%s, %s, %s, %s, %s);
                 """,
-                (user_id, post_id, content, master_comment_id),
+                (post_id, user_id, to_comment_id, master_comment_id, content),
             )
         connection.commit()
         return jsonify({"success": True, "message": "评论成功"})
