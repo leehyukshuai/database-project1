@@ -11,7 +11,14 @@ from flask import (
 import pymysql
 import pymysql.cursors
 
-from create_db import db_config
+db_config = {
+    "host": "10.129.195.217",
+    "user": "hw1",
+    "password": "",
+    "database": "db_hw1",
+    "charset": "utf8mb4",
+    "autocommit": True,
+}
 
 app = Flask(__name__)
 app.secret_key = "my_secret_key"
@@ -446,6 +453,11 @@ def delete_post():
                     return ret
                 # 删除推文前，删除所有依赖这篇推文的内容
                 # 按照次序：like_comment, like_post, comments, belong_to_theme, posts
+                # 暂时禁用外键约束
+                cursor.execute(
+                    """
+                    SET FOREIGN_KEY_CHECKS = 0;
+                """)
                 cursor.execute(
                     """
                     DELETE FROM like_comment AS lc
@@ -481,6 +493,10 @@ def delete_post():
                 """,
                     (post_id),
                 )
+                # 恢复外键约束
+                cursor.execute("""
+                    SET FOREIGN_KEY_CHECKS = 1;
+                """)
             connection.commit()
             # 如果删除推文成功，重定向到主页
             flash(f"‘{session['username']}' deleted #{post_id}:'{post_name}'", "info")
