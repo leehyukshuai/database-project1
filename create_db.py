@@ -3,9 +3,9 @@ import pymysql
 
 db_config = {
     "host": "10.129.195.217",
-    "user": "hs",
+    "user": "hw1",
     "password": "",
-    "database": "db_hs",
+    "database": "db_hw1",
     "charset": "utf8mb4",
     "autocommit": True,
 }
