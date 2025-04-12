@@ -2,69 +2,75 @@
 {% block title %}主页 - 我的网站{% endblock %}
 
 {% block content %}
-<div class="dashboard">
-    <!-- 左侧导航栏 -->
-    <div class="sidebar">
-        <div class="user-info">
-            <h3>{{ user.name }}</h3>
-            <p>欢迎回来！</p>
+<div class="dashboard" style="display: flex; flex-direction: column; gap: 20px;">
+    <!-- 顶部导航栏 -->
+    <nav class="main-nav" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background: linear-gradient(135deg, #3498db, #2c3e50); color: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <div class="user-info" style="display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">👋</span>
+            <div>
+                <h2 style="margin: 0; font-weight: 500;">欢迎回来，<em style="color: #f1c40f;">{{ user.name }}</em></h2>
+                <p style="margin: 0; font-size: 0.9em; opacity: 0.9;">上次登录：2023-10-25</p>
+            </div>
         </div>
         
-        <div class="nav-buttons">
+        <div class="nav-menu" style="display: flex; gap: 25px; align-items: center;">
             <a href="{{ url_for('index', view='followed') }}" 
-               class="btn">
-               已关注的公众号
+               class="nav-link {% if view_type == 'followed' %}active{% endif %}" 
+               style="color: white; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: all 0.3s;">
+               👁️ 已关注
             </a>
             <a href="{{ url_for('index', view='all') }}" 
-               class="btn">
-               所有公众号
+               class="nav-link {% if view_type == 'all' %}active{% endif %}" 
+               style="color: white; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: all 0.3s;">
+               🌐 全部
             </a>
             <a href="{{ url_for('index', view='managed') }}" 
-               class="btn">
-               管理的公众号
+               class="nav-link {% if view_type == 'managed' %}active{% endif %}" 
+               style="color: white; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: all 0.3s;">
+               ⚙️ 我的管理
             </a>
-            <a href="{{ url_for('logout') }}"
-               class="btn">
-               退出登录
+            <div style="height: 25px; width: 1px; background: rgba(255,255,255,0.3); margin: 0 15px;"></div>
+            <a href="{{ url_for('logout') }}" 
+               class="logout-btn" 
+               style="background: #e74c3c; color: white; padding: 8px 20px; border-radius: 5px; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+               🚪 退出登录
             </a>
         </div>
-    </div>
-    
-    <!-- 中间公众号列表 -->
-    <div class="main-content">
-        <h2>
-            {% if view_type == 'followed' %}已关注的公众号
-            {% elif view_type == 'all' %}所有公众号
-            {% elif view_type == 'managed' %}管理的公众号
+    </nav>
+
+    <!-- 公众号列表 -->
+    <div class="channels-section card" style="border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); padding: 20px; background-color: white;">
+        <h2 style="margin-bottom: 20px; color: #2c3e50;">
+            {% if view_type == 'followed' %}👁️ 已关注的公众号
+            {% elif view_type == 'all' %}🌐 所有公众号
+            {% elif view_type == 'managed' %}⚙️ 管理的公众号
             {% endif %}
         </h2>
         
-        <table class="account-table">
+        <table class="account-table" style="width: 100%; border-collapse: collapse;">
             <thead>
-                <tr>
-                    <th>公众号名称</th>
-                    <th>创建者</th>
-                    <th>关注者数</th>
-                    <th>操作</th>
+                <tr style="background-color: #f2f2f2; border-bottom: 2px solid #3498db;">
+                    <th style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">📰 公众号名称</th>
+                    <th style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">👤 创建者</th>
+                    <th style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">👥 关注者数</th>
+                    <th style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">⚙️ 操作</th>
                 </tr>
             </thead>
             <tbody>
                 {% for channel in channels %}
-                <tr class="{{ channel.name }}">
-                    <td>
-                        <a href="{{ url_for('index', view=view_type, selected_channel_id=channel.nid, selected_channel_name=channel.name) }}">
-                            {{ channel.name }}
+                <tr style="transition: background-color 0.3s;">
+                    <td style="padding: 12px; border-bottom: 1px solid #eee;">
+                        <a href="{{ url_for('index', view=view_type, selected_channel_id=channel.nid, selected_channel_name=channel.name) }}" style="color: #3498db; text-decoration: none;">
+                            {{ channel.name }} 📖
                         </a>
                     </td>
-                    <td>{{ channel.created_by }}</td>
-                    <td>{{ channel.follower_cnt }}</td>
-                    <td class="actions">
+                    <td style="padding: 12px; border-bottom: 1px solid #eee;">{{ channel.created_by }}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #eee;">{{ channel.follower_cnt }}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #eee;">
                         {% if channel.followed == 1 %}
-                            <a href="{{ url_for('unfollow', channel_id=channel.nid, channel_name=channel.name, view=view_type, selected_channel_name=selected_channel.name, selected_channel_id=selected_channel.id) }}" 
-                                class="btn btn-sm btn-danger">取消关注</a>
+                            <a href="{{ url_for('unfollow', channel_id=channel.nid, channel_name=channel.name, view=view_type, selected_channel_name=selected_channel.name, selected_channel_id=selected_channel.id) }}" class="btn btn-sm btn-danger" style="padding: 5px 10px; font-size: 12px;">❌ 取关</a>
                         {% else %}
-                            <a href="{{ url_for('follow', channel_id=channel.nid, channel_name=channel.name, view=view_type, selected_channel_name=selected_channel.name, selected_channel_id=selected_channel.id) }}" 
-                                class="btn btn-sm btn-primary">关注</a>
+                            <a href="{{ url_for('follow', channel_id=channel.nid, channel_name=channel.name, view=view_type, selected_channel_name=selected_channel.name, selected_channel_id=selected_channel.id) }}" class="btn btn-sm btn-primary" style="padding: 5px 10px; font-size: 12px;">➕ 关注</a>
                         {% endif %}
                     </td>
                 </tr>
@@ -73,57 +79,74 @@
         </table>
     </div>
     
-    <!-- 右侧推文列表 -->
-    <div class="article-preview">
-        <h2>
+    <!-- 推文列表 -->
+    <div class="articles-section card" style="border-radius: 10px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); padding: 20px; background-color: white;">
+        <h2 style="margin-bottom: 20px; color: #2c3e50;">
             {% if selected_channel.name %}
-                {{ selected_channel.name }}的推文
+                {{ selected_channel.name }}的推文 📝
             {% else %}
-                {% if view_type == 'followed' %}已关注的公众号的推文
-                {% elif view_type == 'all' %}所有公众号的推文
-                {% elif view_type == 'managed' %}管理的公众号的推文
+                {% if view_type == 'followed' %}👁️ 已关注的公众号的推文
+                {% elif view_type == 'all' %}🌐 所有公众号的推文
+                {% elif view_type == 'managed' %}⚙️ 管理的公众号的推文
                 {% endif %}
             {% endif %}
         </h2>
         
-        <table class="article-table">
+        <table class="article-table" style="width: 100%; border-collapse: collapse;">
             <thead>
-                <tr>
-                    <th>标题</th>
-                    <th>发布时间</th>
-                    <th>点赞数</th>
+                <tr style="background-color: #f2f2f2; border-bottom: 2px solid #3498db;">
+                    <th style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">📝 标题</th>
+                    <th style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">🗓️ 发布时间</th>
+                    <th style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">❤️ 点赞数</th>
                     {% if view_type == 'managed' %}
-                    <th>操作</th>
+                    <th style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">⚙️ 操作</th>
                     {% endif %}
                 </tr>
             </thead>
             <tbody>
                 {% if posts %}
                     {% for post in posts %}
-                    <tr>
-                        <td>
-                            <a href="{{ url_for('show_post', post_id=post.pid) }}">
-                                {{ post.title }}
+                    <tr style="transition: background-color 0.3s;">
+                        <td style="padding: 12px; border-bottom: 1px solid #eee;">
+                            <a href="{{ url_for('show_post', post_id=post.pid) }}" style="color: #3498db; text-decoration: none;">
+                                {{ post.title }} 📰
                             </a>
                         </td>
-                        <td>{{ post.created_at }}</td>
-                        <td>{{ post.like_cnt }}</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #eee;">{{ post.created_at }}</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #eee;">{{ post.like_cnt }}</td>
                         {% if view_type == 'managed' %}
-                        <td class="actions">
-                            <a href="{{ url_for('delete_post', post_id=post.pid, post_name=post.title, view=view_type, selected_channel_name=selected_channel.name, selected_channel_id=selected_channel.id) }}" 
-                            class="btn btn-sm btn-danger" 
-                            onclick="return confirm('确定要删除这篇推文吗？')">删除</a>
+                        <td style="padding: 12px; border-bottom: 1px solid #eee;">
+                            <a href="{{ url_for('delete_post', post_id=post.pid, post_name=post.title, view=view_type, selected_channel_name=selected_channel.name, selected_channel_id=selected_channel.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('确定要删除这篇推文吗？')" style="padding: 5px 10px; font-size: 12px;">🗑️ 删除</a>
                         </td>
                         {% endif %}
                     </tr>
                     {% endfor %}
                 {% else %}
                 <tr>
-                    <td colspan="{% if view_type == 'managed' %}3{% else %}2{% endif %}">暂无推文</td>
+                    <td colspan="{% if view_type == 'managed' %}3{% else %}2{% endif %}" style="padding: 12px; text-align: center; border-bottom: 1px solid #eee;">
+                        📄 暂无推文
+                    </td>
                 </tr>
                 {% endif %}
             </tbody>
         </table>
-    </div>
+    </div></div>
 </div>
+
+<style>
+    .nav-link:hover {
+        background: rgba(255,255,255,0.1);
+        transform: translateY(-2px);
+    }
+    
+    .nav-link.active {
+        background: rgba(255,255,255,0.2);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .logout-btn:hover {
+        background: #c0392b !important;
+        transform: translateY(-2px);
+    }
+</style>
 {% endblock %}
