@@ -22,7 +22,6 @@ def get_db_connection():
 
 
 # TODO: 添加修改密码的逻辑
-# TODO: 处理用户不按照逻辑输入缺省参数的url(也可以直接忽略)
 
 
 @app.route("/")
@@ -224,6 +223,57 @@ def register():
         finally:
             connection.close()
     return render_template("register.html")
+
+
+@app.route("/change_password", methods=["GET", "POST"])
+def change_password():
+    if "userid" not in session:
+        flash("请先登录", "danger")
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        old_password = request.form["old_password"]
+        new_password = request.form["new_password"]
+        confirm_password = request.form["confirm_password"]
+
+        # 验证表单数据
+        if not all([old_password, new_password, confirm_password]):
+            flash("请填写所有字段", "danger")
+            return redirect(url_for("change_password"))
+
+        if new_password != confirm_password:
+            flash("新密码与确认密码不一致", "danger")
+            return redirect(url_for("change_password"))
+
+        connection = get_db_connection()
+        try:
+            with connection.cursor() as cursor:
+                # 验证旧密码
+                cursor.execute(
+                    "SELECT password FROM users WHERE uid = %s", (session["userid"],)
+                )
+                result = cursor.fetchone()
+
+                if not result or result[0] != old_password:
+                    flash("旧密码不正确", "danger")
+                    return redirect(url_for("change_password"))
+
+                # 更新密码
+                cursor.execute(
+                    "UPDATE users SET password = %s WHERE uid = %s",
+                    (new_password, session["userid"]),
+                )
+                connection.commit()
+                flash("密码修改成功，请重新登录", "success")
+                session.clear()
+                return redirect(url_for("login"))
+        except Exception as e:
+            flash("密码修改失败，请稍后再试", "danger")
+            return redirect(url_for("change_password"))
+        finally:
+            connection.close()
+
+    return render_template("change_password.html")
 
 
 @app.route("/logout")
@@ -441,7 +491,6 @@ def delete_post():
 
 @app.route("/show_post/<post_id>")
 def show_post(post_id):
-    # TODO: 添加点赞和评论的交互
     with get_db_connection() as conn:
         with conn.cursor(
             pymysql.cursors.DictCursor
